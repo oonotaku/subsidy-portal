@@ -6,7 +6,7 @@ const PrivateRoute = ({ children }) => {
 
   if (!user) {
     // ユーザーが未ログインの場合、ログインページにリダイレクト
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
   return children;

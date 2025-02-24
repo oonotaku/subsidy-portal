@@ -2,12 +2,13 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 import requests
-from .models import Todo, Subsidy, CompanyProfile, SubsidyEligibilityCheck
+from .models import Todo, Subsidy, CompanyProfile, SubsidyEligibilityCheck, SubsidyApplication, ApplicationProgress, ProjectPlan
 from .serializers import (
     TodoSerializer, 
     SubsidySerializer, 
     CompanyProfileSerializer, 
-    SubsidyEligibilityCheckSerializer
+    SubsidyEligibilityCheckSerializer,
+    SubsidyApplicationSerializer
 )
 from django.http import HttpResponse
 import pandas as pd
@@ -306,5 +307,395 @@ def check_subsidy_eligibility(request):
     except Exception as e:
         return Response(
             {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def check_eligibility(request):
+    data = request.data
+    
+    try:
+        # 基本的な適格性判定
+        is_eligible = False
+        eligible_frames = []
+        
+        if data['business_type'] == 'individual':
+            # 個人事業主の判定
+            if int(data['employee_count']) <= 20:
+                is_eligible = True
+                eligible_frames.append('小規模枠')
+        else:
+            # 法人の判定
+            if int(data['employee_count']) <= 2000 and int(data['capital_amount']) < 1000000000:
+                is_eligible = True
+                if int(data['employee_count']) <= 50:
+                    eligible_frames.append('小規模枠')
+                if int(data['employee_count']) <= 300:
+                    eligible_frames.append('通常枠')
+                eligible_frames.append('大規模枠')
+        
+        # 結果を保存
+        eligibility_check = SubsidyEligibilityCheck.objects.create(
+            user=request.user,
+            business_type=data['business_type'],
+            employee_count=data['employee_count'],
+            capital_amount=data['capital_amount'],
+            industry_type=data['industry_type'],
+            investment_amount=data['investment_amount'],
+            is_innovation=data.get('is_innovative', False),
+            is_digital=data.get('uses_digital', False),
+            has_sustainability=data.get('is_sustainable', False),
+            is_eligible=is_eligible
+        )
+
+        # 適格性がある場合のみ申請を作成
+        if is_eligible:
+            # 申請を作成
+            application = SubsidyApplication.objects.create(
+                user=request.user,
+                eligibility_check=eligibility_check,
+                business_type=data['business_type'],
+                employee_count=data['employee_count'],
+                capital_amount=data['capital_amount'],
+                industry_type=data['industry_type'],
+                investment_amount=data['investment_amount']
+            )
+
+            # 進捗を作成
+            ApplicationProgress.objects.create(
+                user=request.user,
+                application=application,
+                status='draft'
+            )
+        
+        return Response({
+            'is_eligible': is_eligible,
+            'eligible_frames': eligible_frames,
+            'check_id': eligibility_check.id,
+            'message': '基本要件を満たしています。詳細な要件を確認しましょう。' if is_eligible 
+                      else '申し訳ありませんが、基本要件を満たしていません。'
+        })
+
+    except Exception as e:
+        print("\nError in check_eligibility:")
+        print("Error type:", type(e))
+        print("Error message:", str(e))
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['GET', 'PATCH', 'POST'])
+@permission_classes([IsAuthenticated])
+def manage_application(request, check_id):
+    try:
+        # デバッグ用のログを追加
+        print("\n=== manage_application ===")
+        print("User:", request.user.email)
+        print("Check ID:", check_id)
+        
+        # 企業プロフィールを取得
+        try:
+            company_profile = CompanyProfile.objects.get(user=request.user)
+            print("\nCompany Profile found:", {
+                'company_name': company_profile.company_name,
+                'representative': company_profile.representative,
+                'established_date': company_profile.established_date,
+                'postal_code': company_profile.postal_code,
+                'address': company_profile.address,
+                'phone_number': company_profile.phone_number,
+            })
+        except CompanyProfile.DoesNotExist:
+            print("\nCompany Profile not found for user:", request.user.email)
+            return Response({'error': '企業プロフィールが未登録です'}, status=404)
+        
+        # 適格性チェック結果を取得
+        try:
+            eligibility_check = SubsidyEligibilityCheck.objects.get(
+                id=check_id,
+                user=request.user
+            )
+            print("\nEligibility Check found:", {
+                'id': eligibility_check.id,
+                'business_type': eligibility_check.business_type,
+                'employee_count': eligibility_check.employee_count,
+            })
+        except SubsidyEligibilityCheck.DoesNotExist:
+            print("\nEligibility Check not found for id:", check_id)
+            return Response({'error': '適格性チェックデータが見つかりません'}, status=404)
+        
+        # 申請データを取得または作成
+        application, created = SubsidyApplication.objects.get_or_create(
+            eligibility_check=eligibility_check,
+            user=request.user,
+            defaults={
+                'business_type': eligibility_check.business_type,
+                'employee_count': eligibility_check.employee_count,
+                'capital_amount': eligibility_check.capital_amount,
+                'industry_type': eligibility_check.industry_type,
+                'investment_amount': eligibility_check.investment_amount,
+            }
+        )
+        print("Application:", "Created" if created else "Found")  # デバッグ用
+
+        # 進捗データを取得または作成
+        if created:
+            ApplicationProgress.objects.create(
+                user=request.user,
+                application=application,
+                status='draft'
+            )
+
+        if request.method == 'GET':
+            try:
+                # デバッグ用：各フィールドの型を確認
+                print("\nDebug field types:")
+                print("employee_count type:", type(application.employee_count))
+                print("capital_amount type:", type(application.capital_amount))
+                print("investment_amount type:", type(application.investment_amount))
+                print("employee_count value:", application.employee_count)
+                print("capital_amount value:", application.capital_amount)
+                print("investment_amount value:", application.investment_amount)
+
+                response_data = {
+                    # 企業プロフィール情報
+                    'company_name': company_profile.company_name,
+                    'representative': company_profile.representative,
+                    'established_date': company_profile.established_date,
+                    'postal_code': company_profile.postal_code,
+                    'address': company_profile.address,
+                    'phone_number': company_profile.phone_number,
+                    
+                    # 適格性チェック情報
+                    'business_type': application.business_type,
+                    'employee_count': int(application.employee_count),
+                    'capital_amount': int(application.capital_amount),
+                    'industry_type': application.industry_type,
+                    'investment_amount': int(application.investment_amount),
+                    
+                    # 事業計画情報
+                    'project_name': application.project_name or '',
+                    'project_summary': application.project_summary or '',
+                    'implementation_period': application.implementation_period or '',
+                    
+                    # ファイル情報
+                    'business_plan': application.business_plan.url if application.business_plan else None,
+                    'company_registry': application.company_registry.url if application.company_registry else None,
+                    'tax_return': application.tax_return.url if application.tax_return else None,
+                    'other_documents': application.other_documents.url if application.other_documents else None,
+                    
+                    # 課金状態
+                    'is_premium': False  # 一時的にFalseに固定
+                }
+                print("\nResponse data being sent:", response_data)
+                return Response(response_data)
+            except Exception as e:
+                print("\nError preparing response:")
+                print("Error type:", type(e))
+                print("Error message:", str(e))
+                print("Error details:", e.__dict__)
+                raise
+
+        elif request.method == 'PATCH':
+            # 部分的な更新
+            for key, value in request.data.items():
+                if hasattr(application, key):
+                    setattr(application, key, value)
+            application.save()
+            return Response({'message': '保存しました'})
+
+        elif request.method == 'POST':
+            # ファイルアップロード
+            file = request.FILES.get('file')
+            field_name = request.data.get('field_name')
+            if file and hasattr(application, field_name):
+                setattr(application, field_name, file)
+                application.save()
+                return Response({'message': 'ファイルを保存しました'})
+            return Response({'error': 'ファイルが見つかりません'}, status=400)
+
+    except Exception as e:
+        print("\nTop level error:")
+        print("Error type:", type(e))
+        print("Error message:", str(e))
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_eligibility_result(request, check_id):
+    """適格性チェック結果の取得"""
+    try:
+        check = SubsidyEligibilityCheck.objects.get(
+            id=check_id,
+            user=request.user
+        )
+        
+        # 基本的な適格性判定
+        is_eligible = check.is_eligible
+        eligible_frames = []
+        
+        if check.business_type == 'individual':
+            if int(check.employee_count) <= 20:
+                eligible_frames.append('小規模枠')
+        else:
+            if int(check.employee_count) <= 2000 and int(check.investment_amount) < 1000000000:
+                if int(check.employee_count) <= 50:
+                    eligible_frames.append('小規模枠')
+                if int(check.employee_count) <= 300:
+                    eligible_frames.append('通常枠')
+                eligible_frames.append('大規模枠')
+        
+        return Response({
+            'is_eligible': is_eligible,
+            'eligible_frames': eligible_frames,
+            'message': '基本要件を満たしています。詳細な要件を確認しましょう。' if is_eligible 
+                      else '申し訳ありませんが、基本要件を満たしていません。',
+            'business_type': check.business_type,
+            'employee_count': check.employee_count,
+            'capital_amount': check.capital_amount,
+            'industry_type': check.industry_type,
+            'investment_amount': check.investment_amount
+        })
+        
+    except SubsidyEligibilityCheck.DoesNotExist:
+        return Response(
+            {'error': '適格性チェックデータが見つかりません'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_subscription(request):
+    try:
+        application_id = request.data.get('application_id')
+        print("Creating subscription for application:", application_id)  # デバッグ用
+        
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price': 'price_1QvtzBB00Umg07T7P50I5FZe',
+                'quantity': 1,
+            }],
+            mode='subscription',
+            success_url=f'http://localhost:5173/application/{application_id}?session_id={{CHECKOUT_SESSION_ID}}',
+            cancel_url=f'http://localhost:5173/application/{application_id}',
+            client_reference_id=str(application_id),
+            customer_email=request.user.email,
+            locale='ja',  # 日本語表示
+            currency='jpy',  # 日本円
+            allow_promotion_codes=True,  # プロモーションコードを許可
+            billing_address_collection='required',  # 請求先住所を必須に
+        )
+        
+        print("Stripe session created:", session.url)  # デバッグ用
+        return Response({
+            'sessionUrl': session.url
+        })
+        
+    except Exception as e:
+        print("Stripe error:", str(e))  # デバッグ用
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_applications(request):
+    """ユーザーの申請一覧を取得"""
+    try:
+        applications = SubsidyApplication.objects.filter(
+            user=request.user
+        ).select_related('applicationprogress', 'eligibility_check')  # eligibility_checkも取得
+        
+        print("\nApplications found:", len(applications))
+        
+        response_data = []
+        for app in applications:
+            progress = getattr(app, 'applicationprogress', None)
+            print(f"\nApplication {app.id}:", {
+                'project_name': app.project_name,
+                'progress': progress.status if progress else 'None',
+                'check_id': app.eligibility_check.id if app.eligibility_check else None
+            })
+            
+            response_data.append({
+                'id': app.eligibility_check.id,  # check_idを使用
+                'project_name': app.project_name or '(未設定)',
+                'status': progress.status if progress else 'draft',
+                'status_display': progress.get_status_display() if progress else '下書き',
+                'last_edited_at': progress.last_edited_at if progress else app.updated_at,
+                'created_at': app.created_at
+            })
+        
+        return Response(response_data)
+        
+    except Exception as e:
+        print("\nError in list_applications:")
+        print("Error type:", type(e))
+        print("Error message:", str(e))
+        return Response(
+            {'error': '申請一覧の取得に失敗しました'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def manage_project_plans(request, application_id):
+    """事業計画の管理API"""
+    try:
+        application = SubsidyApplication.objects.get(
+            id=application_id,
+            user=request.user
+        )
+
+        if request.method == 'GET':
+            # 事業計画一覧を取得
+            plans = ProjectPlan.objects.filter(application=application)
+            data = [{
+                'id': plan.id,
+                'name': plan.name,
+                'summary': plan.summary,
+                'implementation_period': plan.implementation_period,
+                'investment_amount': plan.investment_amount,
+                'innovation_point': plan.innovation_point,
+                'market_research': plan.market_research,
+                'implementation_system': plan.implementation_system,
+                'expected_outcome': plan.expected_outcome,
+                'created_at': plan.created_at,
+                'updated_at': plan.updated_at
+            } for plan in plans]
+            return Response(data)
+
+        elif request.method == 'POST':
+            # 新しい事業計画を作成
+            plan = ProjectPlan.objects.create(
+                application=application,
+                name=request.data.get('name', '新規事業計画'),
+                investment_amount=request.data.get('investment_amount', 0)
+            )
+            return Response({
+                'id': plan.id,
+                'name': plan.name,
+                'message': '事業計画を作成しました'
+            }, status=status.HTTP_201_CREATED)
+
+    except SubsidyApplication.DoesNotExist:
+        return Response(
+            {'error': '申請が見つかりません'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        print("\nError in manage_project_plans:")
+        print("Error type:", type(e))
+        print("Error message:", str(e))
+        return Response(
+            {'error': '事業計画の操作に失敗しました'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

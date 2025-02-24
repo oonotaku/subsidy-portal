@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Todo, Subsidy, CompanyProfile, SubsidyEligibilityCheck, BusinessPlan
+from .models import Todo, Subsidy, CompanyProfile, SubsidyEligibilityCheck, BusinessPlan, SubsidyApplication
 
 class TodoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -25,4 +25,15 @@ class SubsidyEligibilityCheckSerializer(serializers.ModelSerializer):
 class BusinessPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = BusinessPlan
-        fields = '__all__' 
+        fields = '__all__'
+
+class SubsidyApplicationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubsidyApplication
+        fields = [
+            'business_type', 'employee_count', 'capital_amount',
+            'industry_type', 'investment_amount', 'project_name',
+            'project_summary', 'implementation_period', 'business_plan',
+            'company_registry', 'tax_return', 'other_documents',
+            'status'
+        ] 

@@ -17,5 +17,10 @@ urlpatterns = [
     path('subsidies/export/', views.export_grants_excel, name='export-grants'),
     path('subsidies/sync/', views.sync_subsidies, name='sync-subsidies'),
     path('subsidies/check-eligibility/', views.check_subsidy_eligibility, name='check-subsidy-eligibility'),
-    path('company-profile/', views.manage_company_profile, name='manage-company-profile'),
+    path('company-profile/', views.manage_company_profile, name='company_profile'),
+    path('subsidy-eligibility-check/', views.check_eligibility, name='check-eligibility'),
+    path('applications/', views.list_applications, name='list_applications'),
+    path('applications/<int:check_id>/', views.manage_application, name='manage_application'),
+    path('eligibility-check/<int:check_id>/', views.get_eligibility_result, name='eligibility_result'),
+    path('create-subscription/', views.create_subscription, name='create_subscription'),
 ] 

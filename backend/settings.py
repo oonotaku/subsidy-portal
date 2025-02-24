@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
+from decouple import config  # python-decouple をインストール
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -38,13 +40,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
-    'api',  # 元に戻す
+    'api',
     'django.contrib.sites',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
-    'rest_framework.authtoken',
 ]
 
 MIDDLEWARE = [
@@ -56,7 +58,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'allauth.account.middleware.AccountMiddleware',  # 追加
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -135,37 +137,40 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS設定を追加
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Viteの開発サーバー
-    "http://localhost:3000",
+    "http://localhost:5173",  # Viteのデフォルトポート
 ]
 
-# 追加のCORS設定
+CORS_ALLOW_CREDENTIALS = True
+
 CORS_ALLOW_METHODS = [
-    "GET",
-    "POST",
-    "OPTIONS",
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
 ]
 
 CORS_ALLOW_HEADERS = [
-    "accept",
-    "accept-encoding",
-    "authorization",
-    "content-type",
-    "dnt",
-    "origin",
-    "user-agent",
-    "x-csrftoken",
-    "x-requested-with",
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 
 # REST Frameworkの設定
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
-    ]
 }
 
 # ログ設定を追加
@@ -197,7 +202,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # コンソー
 
 # Allauth settings
 ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+ACCOUNT_EMAIL_VERIFICATION = 'none'  # メール確認をスキップ
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_UNIQUE_EMAIL = True
@@ -211,5 +216,12 @@ ACCOUNT_EMAIL_SUBJECT_PREFIX = '[Subsidy Portal] '  # メールの件名プレ�
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'
 
 # Stripe settings
-STRIPE_SECRET_KEY = 'sk_test_dummy'
-STRIPE_PUBLISHABLE_KEY = 'pk_test_dummy'
+STRIPE_PUBLISHABLE_KEY = 'pk_test_51QvtwCB00Umg07T7RudDPW77Tbtds3mEnjeareVeI8rDq1NvClBIUglnOq3z2cBbXBzqanAgDSeD8kufU0VJVeSZ0000OuFIet'
+STRIPE_SECRET_KEY = 'sk_test_51QvtwCB00Umg07T7Uf8ImUX2z6iG41TjKiAODOVMh64yAAIVDSOquMujCjWQDV6YBUjaZkcbohF3UrMgqYfumxjf00H3spyxAT'
+
+# ファイルアップロード設定
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# ファイルサイズ制限
+MAX_UPLOAD_SIZE = 20971520  # 20MB
