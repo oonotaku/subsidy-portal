@@ -82,106 +82,126 @@ const CompanyProfilePage = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">企業プロフィール</h1>
+        <h1 className="text-2xl font-bold mb-6">企業プロフィール登録</h1>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-white shadow rounded-lg p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">会社名</label>
-              <input
-                type="text"
-                name="company_name"
-                value={formData.company_name}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+            <div className="space-y-4 mb-8">
+              <h2 className="text-lg font-semibold">基本情報</h2>
+              <div>
+                <label className="block mb-1">
+                  会社名 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="company_name"
+                  required
+                  value={formData.company_name}
+                  onChange={handleChange}
+                  className="w-full border rounded p-2"
+                />
+              </div>
+              <div>
+                <label className="block mb-1">
+                  代表者名 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="representative"
+                  required
+                  value={formData.representative}
+                  onChange={handleChange}
+                  className="w-full border rounded p-2"
+                />
+              </div>
+              <div>
+                <label className="block mb-1">
+                  電話番号 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  name="phone_number"
+                  required
+                  value={formData.phone_number}
+                  onChange={handleChange}
+                  className="w-full border rounded p-2"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">代表者名</label>
-              <input
-                type="text"
-                name="representative"
-                value={formData.representative}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">設立日</label>
-              <input
-                type="date"
-                name="established_date"
-                value={formData.established_date}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">資本金（円）</label>
-              <input
-                type="number"
-                name="capital_amount"
-                value={formData.capital_amount}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">従業員数</label>
-              <input
-                type="number"
-                name="employee_count"
-                value={formData.employee_count}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">業種</label>
-              <input
-                type="text"
-                name="industry_type"
-                value={formData.industry_type}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">郵便番号</label>
-              <input
-                type="text"
-                name="postal_code"
-                value={formData.postal_code}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">住所</label>
-              <input
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">電話番号</label>
-              <input
-                type="tel"
-                name="phone_number"
-                value={formData.phone_number}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+            <div className="space-y-4 mb-8">
+              <h2 className="text-lg font-semibold">追加情報（任意）</h2>
+              <div>
+                <label className="block mb-1">
+                  設立日
+                </label>
+                <input
+                  type="date"
+                  name="established_date"
+                  value={formData.established_date}
+                  onChange={handleChange}
+                  className="w-full border rounded p-2"
+                />
+              </div>
+              <div>
+                <label className="block mb-1">
+                  資本金（円）
+                </label>
+                <input
+                  type="number"
+                  name="capital_amount"
+                  value={formData.capital_amount}
+                  onChange={handleChange}
+                  className="w-full border rounded p-2"
+                />
+              </div>
+              <div>
+                <label className="block mb-1">
+                  従業員数
+                </label>
+                <input
+                  type="number"
+                  name="employee_count"
+                  value={formData.employee_count}
+                  onChange={handleChange}
+                  className="w-full border rounded p-2"
+                />
+              </div>
+              <div>
+                <label className="block mb-1">
+                  業種
+                </label>
+                <input
+                  type="text"
+                  name="industry_type"
+                  value={formData.industry_type}
+                  onChange={handleChange}
+                  className="w-full border rounded p-2"
+                />
+              </div>
+              <div>
+                <label className="block mb-1">
+                  郵便番号
+                </label>
+                <input
+                  type="text"
+                  name="postal_code"
+                  value={formData.postal_code}
+                  onChange={handleChange}
+                  className="w-full border rounded p-2"
+                />
+              </div>
+              <div>
+                <label className="block mb-1">
+                  住所
+                </label>
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  className="w-full border rounded p-2"
+                />
+              </div>
             </div>
 
             <div className="flex gap-4 pt-4">

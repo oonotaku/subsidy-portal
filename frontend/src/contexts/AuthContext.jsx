@@ -33,15 +33,28 @@ export const AuthProvider = ({ children }) => {
       }
 
       const data = await response.json();
-      console.log('Login response:', data); // デバッグ用
-
       const userData = {
         email: email,
         token: data.token,
       };
 
-      setUser(userData);
+      // プロフィール情報を取得
+      const profileResponse = await fetch('http://localhost:8000/api/company-profile/', {
+        headers: {
+          'Authorization': `Token ${data.token}`,
+        },
+      });
+
+      const hasProfile = profileResponse.ok && Object.keys(await profileResponse.json()).length > 0;
+
+      setUser({ ...userData, hasProfile });
       localStorage.setItem('user', JSON.stringify(userData));
+
+      // プロフィールが未登録の場合はプロフィール登録画面へ
+      if (!hasProfile) {
+        window.location.href = '/profile';
+      }
+
       return userData;
     } catch (error) {
       console.error('Login error:', error);

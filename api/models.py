@@ -41,14 +41,18 @@ class Subsidy(models.Model):
 class CompanyProfile(models.Model):
     """企業プロフィール"""
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    company_name = models.CharField(max_length=100)
-    representative = models.CharField(max_length=100)
-    established_date = models.DateField()
-    postal_code = models.CharField(max_length=8)
-    address = models.CharField(max_length=200)
-    phone_number = models.CharField(max_length=15)
+    company_name = models.CharField("会社名", max_length=100)  # 必須
+    representative = models.CharField("代表者名", max_length=100)  # 必須
+    established_date = models.DateField("設立日", null=True, blank=True)  # 任意
+    postal_code = models.CharField("郵便番号", max_length=8, null=True, blank=True)  # 任意
+    address = models.CharField("住所", max_length=200, null=True, blank=True)  # 任意
+    phone_number = models.CharField("電話番号", max_length=15)  # 必須
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "企業プロフィール"
+        verbose_name_plural = "企業プロフィール"
 
     def __str__(self):
         return self.company_name
@@ -173,3 +177,42 @@ class ApplicationProgress(models.Model):
 
     def __str__(self):
         return f"{self.application.project_name or '(未設定)'} - {self.get_status_display()}" 
+
+class ProjectQuestion(models.Model):
+    """事業計画の質問テンプレート"""
+    QUESTION_TYPES = [
+        ('text', 'テキスト入力'),
+        ('number', '数値入力'),
+        ('choice', '選択式'),
+        ('multi', '複数選択'),
+    ]
+    
+    question_id = models.CharField(max_length=50, unique=True)
+    text = models.TextField()
+    question_type = models.CharField(max_length=10, choices=QUESTION_TYPES)
+    options = models.JSONField(null=True, blank=True)  # 選択式の場合の選択肢
+    required = models.BooleanField(default=True)
+    order = models.IntegerField()
+    dependent_on = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
+    condition = models.JSONField(null=True, blank=True)  # 表示条件
+    ai_prompt = models.TextField(null=True, blank=True)  # AI用の追加コンテキスト
+    
+    class Meta:
+        ordering = ['order']
+
+class ProjectAnswer(models.Model):
+    """ユーザーの回答を保存"""
+    project = models.ForeignKey('ProjectPlan', on_delete=models.CASCADE)
+    question = models.ForeignKey(ProjectQuestion, on_delete=models.CASCADE)
+    answer = models.JSONField()
+    ai_feedback = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+class AIPrompt(models.Model):
+    """AI用のプロンプトテンプレート"""
+    name = models.CharField(max_length=100)
+    prompt_template = models.TextField()
+    context = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True) 

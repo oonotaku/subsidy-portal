@@ -1,10 +1,18 @@
 from rest_framework import serializers
-from .models import Todo, Subsidy, CompanyProfile, SubsidyEligibilityCheck, BusinessPlan, SubsidyApplication
+from .models import (
+    Todo, 
+    Subsidy, 
+    CompanyProfile, 
+    SubsidyEligibilityCheck,
+    SubsidyApplication,
+    ProjectQuestion,
+    ProjectAnswer
+)
 
 class TodoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Todo
-        fields = '__all__'
+        fields = ['id', 'title', 'completed']
 
 class SubsidySerializer(serializers.ModelSerializer):
     class Meta:
@@ -22,11 +30,6 @@ class SubsidyEligibilityCheckSerializer(serializers.ModelSerializer):
         model = SubsidyEligibilityCheck
         fields = '__all__'
 
-class BusinessPlanSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BusinessPlan
-        fields = '__all__'
-
 class SubsidyApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubsidyApplication
@@ -36,4 +39,31 @@ class SubsidyApplicationSerializer(serializers.ModelSerializer):
             'project_summary', 'implementation_period', 'business_plan',
             'company_registry', 'tax_return', 'other_documents',
             'status'
+        ]
+
+class ProjectQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectQuestion
+        fields = [
+            'id',
+            'question_id',
+            'text',
+            'question_type',
+            'options',
+            'required',
+            'order',
+            'dependent_on',
+            'condition'
+        ]
+
+class ProjectAnswerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectAnswer
+        fields = [
+            'id',
+            'project',
+            'question',
+            'answer',
+            'ai_feedback',
+            'created_at'
         ] 

@@ -1,0 +1,34 @@
+{
+  "questions": [
+    {
+      "question_id": "project_overview",
+      "text": "どのような事業を計画していますか？",
+      "question_type": "text",
+      "required": true,
+      "order": 1,
+      "ai_prompt": "事業概要について具体的に説明してください。製品・サービスの特徴、対象顧客、解決する課題などを含めてください。"
+    },
+    {
+      "question_id": "market_size",
+      "text": "想定している市場規模はどのくらいですか？",
+      "question_type": "number",
+      "required": true,
+      "order": 2,
+      "ai_prompt": "市場規模の根拠となるデータや、どのように算出したかも教えてください。"
+    },
+    {
+      "question_id": "innovation_type",
+      "text": "どのような革新性がありますか？",
+      "question_type": "choice",
+      "options": [
+        "新技術開発",
+        "既存技術の新しい応用",
+        "新しいビジネスモデル",
+        "その他"
+      ],
+      "required": true,
+      "order": 3,
+      "ai_prompt": "選択された革新性の具体的な内容について詳しく説明してください。"
+    }
+  ]
+} 

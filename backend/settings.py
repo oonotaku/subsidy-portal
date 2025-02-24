@@ -198,14 +198,23 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Email settings
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # コンソールに出力
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # 開発用
 
-# Allauth settings
+# django-allauth settings
 ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_EMAIL_VERIFICATION = 'none'  # メール確認をスキップ
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'none'  # 開発中はnone
+ACCOUNT_DEFAULT_ACTIVE = True  # 新規ユーザーを自動的にアクティブに
+ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 5
+ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 300  # 5分
+ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE = True
+ACCOUNT_SESSION_REMEMBER = True
+
+# Frontend URL
+FRONTEND_URL = 'http://localhost:5173'
+LOGIN_REDIRECT_URL = FRONTEND_URL
+ACCOUNT_LOGOUT_REDIRECT_URL = f"{FRONTEND_URL}/login"
 
 # サイトのドメイン設定
 SITE_DOMAIN = 'localhost:5173'  # フロントエンドのURL
@@ -213,7 +222,6 @@ SITE_NAME = 'Subsidy Portal'    # サイト名
 
 # Allauthのメール設定
 ACCOUNT_EMAIL_SUBJECT_PREFIX = '[Subsidy Portal] '  # メールの件名プレフィックス
-ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'
 
 # Stripe settings
 STRIPE_PUBLISHABLE_KEY = 'pk_test_51QvtwCB00Umg07T7RudDPW77Tbtds3mEnjeareVeI8rDq1NvClBIUglnOq3z2cBbXBzqanAgDSeD8kufU0VJVeSZ0000OuFIet'
@@ -225,3 +233,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # ファイルサイズ制限
 MAX_UPLOAD_SIZE = 20971520  # 20MB
+
+# OpenAI settings
+OPENAI_API_KEY = config('OPENAI_API_KEY')
+
+# 既存の設定の後に追加
+SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'

@@ -35,33 +35,25 @@ def register(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # ユーザーを作成
+        # ユーザーを作成して直接アクティブにする
         user = User.objects.create_user(
-            username=email,  # usernameにもemailを設定
+            username=email,
             email=email,
             password=password,
-            is_active=False  # メール確認まではアカウントを無効に
+            is_active=True  # 直接アクティブに
         )
         
-        # メールアドレスを作成
-        email_address = EmailAddress.objects.create(
-            user=user,
-            email=email,
-            primary=True,
-            verified=False
-        )
-        
-        # 確認メールを送信
-        confirmation = EmailConfirmation.create(email_address)
-        confirmation.send()
+        # ログイン用のトークンを生成
+        token, _ = Token.objects.get_or_create(user=user)
         
         return Response({
-            'message': '登録が完了しました。確認メールをご確認ください。'
+            'message': '登録が完了しました',
+            'token': token.key
         })
     except Exception as e:
-        print(f"Registration error: {str(e)}")  # エラーログを追加
+        print(f"Registration error: {str(e)}")
         return Response(
-            {'error': f'登録中にエラーが発生しました: {str(e)}'}, 
+            {'error': '登録中にエラーが発生しました'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 

@@ -23,4 +23,7 @@ urlpatterns = [
     path('applications/<int:check_id>/', views.manage_application, name='manage_application'),
     path('eligibility-check/<int:check_id>/', views.get_eligibility_result, name='eligibility_result'),
     path('create-subscription/', views.create_subscription, name='create_subscription'),
+    path('projects/<int:project_id>/questions/', 
+         views.get_project_questions, 
+         name='get_project_questions'),
 ] 

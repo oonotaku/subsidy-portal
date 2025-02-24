@@ -10,6 +10,7 @@ import ApplicationListPage from './pages/ApplicationListPage';
 import EligibilityCheckPage from './pages/EligibilityCheckPage';
 import ApplicationPreparationPage from './pages/ApplicationPreparationPage';
 import ProjectPlanPage from './pages/ProjectPlanPage';
+import CompanyProfilePage from './pages/CompanyProfilePage';
 
 import Navbar from './components/Navbar';
 import PrivateRoute from './components/PrivateRoute';
@@ -73,6 +74,17 @@ function App() {
                 <>
                   <Navbar />
                   <ProjectPlanPage />
+                </>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute>
+                <>
+                  <Navbar />
+                  <CompanyProfilePage />
                 </>
               </PrivateRoute>
             }
