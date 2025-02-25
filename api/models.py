@@ -41,12 +41,15 @@ class Subsidy(models.Model):
 class CompanyProfile(models.Model):
     """企業プロフィール"""
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    company_name = models.CharField("会社名", max_length=100)  # 必須
-    representative = models.CharField("代表者名", max_length=100)  # 必須
-    established_date = models.DateField("設立日", null=True, blank=True)  # 任意
-    postal_code = models.CharField("郵便番号", max_length=8, null=True, blank=True)  # 任意
-    address = models.CharField("住所", max_length=200, null=True, blank=True)  # 任意
-    phone_number = models.CharField("電話番号", max_length=15)  # 必須
+    company_name = models.CharField(max_length=100)
+    representative = models.CharField(max_length=100)
+    phone_number = models.CharField(max_length=20)
+    established_date = models.DateField(null=True, blank=True)
+    capital_amount = models.IntegerField(null=True, blank=True)
+    employee_count = models.IntegerField(null=True, blank=True)
+    industry_type = models.CharField(max_length=100, null=True, blank=True)
+    postal_code = models.CharField(max_length=8, null=True, blank=True)
+    address = models.CharField(max_length=200, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -1,0 +1,3 @@
+# ... 他の設定 ...
+
+OPENAI_API_KEY = 'your-api-key-here'  # 環境変数から取得することを推奨 

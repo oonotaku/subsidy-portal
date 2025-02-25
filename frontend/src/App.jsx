@@ -4,96 +4,23 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
-import EmailConfirmPage from './pages/EmailConfirmPage';
-import ApplicationListPage from './pages/ApplicationListPage';
-import EligibilityCheckPage from './pages/EligibilityCheckPage';
-import ApplicationPreparationPage from './pages/ApplicationPreparationPage';
+import HomePage from './pages/HomePage';
 import ProjectPlanPage from './pages/ProjectPlanPage';
-import CompanyProfilePage from './pages/CompanyProfilePage';
-
-import Navbar from './components/Navbar';
 import PrivateRoute from './components/PrivateRoute';
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/accounts/confirm-email/:key" element={<EmailConfirmPage />} />
-          <Route
-            path="/"
-            element={
-              <PrivateRoute>
-                <>
-                  <Navbar />
-                  <ApplicationListPage />
-                </>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/applications"
-            element={
-              <PrivateRoute>
-                <>
-                  <Navbar />
-                  <ApplicationListPage />
-                </>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/eligibility-check"
-            element={
-              <PrivateRoute>
-                <>
-                  <Navbar />
-                  <EligibilityCheckPage />
-                </>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/application/:checkId"
-            element={
-              <PrivateRoute>
-                <>
-                  <Navbar />
-                  <ApplicationPreparationPage />
-                </>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/application/:applicationId/plans"
-            element={
-              <PrivateRoute>
-                <>
-                  <Navbar />
-                  <ProjectPlanPage />
-                </>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <PrivateRoute>
-                <>
-                  <Navbar />
-                  <CompanyProfilePage />
-                </>
-              </PrivateRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<PrivateRoute><HomePage /></PrivateRoute>} />
+          <Route path="/project-plan" element={<PrivateRoute><ProjectPlanPage /></PrivateRoute>} />
+          <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
-        <ToastContainer position="bottom-right" />
-      </BrowserRouter>
-    </AuthProvider>
+        <ToastContainer />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

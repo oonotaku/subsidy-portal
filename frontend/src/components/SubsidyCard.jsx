@@ -56,6 +56,12 @@ const SubsidyCard = ({ subsidy }) => {
         >
           詳細を見る
         </Link>
+        <Link
+          to={`/eligibility-check?subsidy=${subsidy.id}`}
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+        >
+          申請予定
+        </Link>
       </div>
     </div>
   );

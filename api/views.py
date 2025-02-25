@@ -233,47 +233,39 @@ def create_payment(request):
     except Exception as e:
         return Response({'error': str(e)}, status=400)
 
-@api_view(['POST', 'PUT', 'GET'])
+@api_view(['GET', 'POST'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def manage_company_profile(request):
-    """企業プロフィールの管理API"""
     try:
+        # GETリクエスト時の処理
         if request.method == 'GET':
-            # ユーザーのプロフィールを取得
             try:
                 profile = CompanyProfile.objects.get(user=request.user)
                 serializer = CompanyProfileSerializer(profile)
                 return Response(serializer.data)
             except CompanyProfile.DoesNotExist:
-                return Response([], status=status.HTTP_200_OK)
-            
+                return Response({})  # プロフィールが存在しない場合は空のオブジェクトを返す
+
+        # POSTリクエスト時の処理
         elif request.method == 'POST':
-            # 新規プロフィール作成
-            serializer = CompanyProfileSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save(user=request.user)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
-        else:  # PUT
-            # プロフィール更新
             try:
                 profile = CompanyProfile.objects.get(user=request.user)
-                serializer = CompanyProfileSerializer(profile, data=request.data, partial=True)
-                if serializer.is_valid():
-                    serializer.save()
-                    return Response(serializer.data)
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                serializer = CompanyProfileSerializer(profile, data=request.data)
             except CompanyProfile.DoesNotExist:
-                return Response(
-                    {"error": "Profile not found"}, 
-                    status=status.HTTP_404_NOT_FOUND
-                )
-            
+                serializer = CompanyProfileSerializer(data=request.data)
+
+            if serializer.is_valid():
+                serializer.save(user=request.user)
+                return Response(serializer.data)
+            else:
+                print("Validation errors:", serializer.errors)  # デバッグ用
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     except Exception as e:
+        print(f"Error in manage_company_profile: {str(e)}")  # デバッグ用
         return Response(
-            {"error": str(e)}, 
+            {'error': 'プロフィールの操作に失敗しました'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
