@@ -1,20 +1,39 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import TypeFormContainer from '../components/TypeForm/TypeFormContainer';
 import { sampleQuestions } from '../data/sampleQuestions';
+import { saveProjectAnswers, createProject } from '../services/projectService';
 import { toast } from 'react-toastify';
 
 const ProjectPlanPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isStarted, setIsStarted] = useState(false);
+  const [projectId, setProjectId] = useState(null);
 
-  const handleComplete = (answers) => {
-    console.log('Form completed with answers:', answers);
-    toast.success('回答が保存されました');
-    // 一時的に結果を表示
-    setIsStarted(false);
-    // あるいは別のページに遷移
-    // navigate('/applications');
+  const handleComplete = async (answers) => {
+    try {
+      await saveProjectAnswers(projectId, answers, user.token);
+      toast.success('回答が保存されました');
+      navigate('/confirm-answers', { 
+        state: { answers, projectId } 
+      });
+    } catch (error) {
+      toast.error('保存に失敗しました');
+      console.error('Error saving answers:', error);
+    }
+  };
+
+  const handleStart = async () => {
+    try {
+      const { project_id } = await createProject(user.token);
+      setProjectId(project_id);
+      setIsStarted(true);
+    } catch (error) {
+      toast.error('プロジェクトの作成に失敗しました');
+      console.error('Error creating project:', error);
+    }
   };
 
   if (!isStarted) {
@@ -29,7 +48,7 @@ const ProjectPlanPage = () => {
             途中で保存することもできます。
           </p>
           <button
-            onClick={() => setIsStarted(true)}
+            onClick={handleStart}
             className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             始める

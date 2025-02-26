@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 import requests
-from .models import Todo, Subsidy, CompanyProfile, SubsidyEligibilityCheck, SubsidyApplication, ApplicationProgress, ProjectPlan, ProjectQuestion
+from .models import Todo, Subsidy, CompanyProfile, SubsidyEligibilityCheck, SubsidyApplication, ApplicationProgress, ProjectPlan, ProjectQuestion, ProjectAnswer
 from .serializers import (
     TodoSerializer, 
     SubsidySerializer, 
@@ -23,8 +23,10 @@ from bs4 import BeautifulSoup
 import stripe
 from django.conf import settings
 from .services.pdf_service import check_eligibility
+from openai import OpenAI
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 class TodoViewSet(viewsets.ModelViewSet):
     queryset = Todo.objects.all()
@@ -719,5 +721,143 @@ def get_project_questions(request, project_id):
         print(f"Error in get_project_questions: {str(e)}")
         return Response(
             {'error': '質問の取得に失敗しました。'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_questions(request):
+    try:
+        answers = request.data.get('answers', {})
+        
+        print("\nReceived answers:", answers)
+        
+        context = f"""
+        事業概要: {answers.get('business_overview', '')}
+        事業の必要性: {answers.get('current_issues', '')}
+        ターゲット: {answers.get('target_market', '')}
+        特徴: {answers.get('unique_point', '')}
+        実施計画: {answers.get('implementation_plan', '')}
+        目標: {answers.get('expected_outcome', '')}
+        """
+        
+        print("\nContext for OpenAI:", context)
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": """
+                あなたは事業計画のアドバイザーです。
+                高校生が考えた事業計画について、より具体的に考えるための質問を3つ生成してください。
+                質問は優しい言葉で、具体的な例を示しながら行ってください。
+                """},
+                {"role": "user", "content": context}
+            ]
+        )
+        
+        print("\nOpenAI response:", response)
+        
+        questions = response.choices[0].message.content.split('\n')
+        follow_up_questions = []
+        
+        for i, question in enumerate(questions):
+            if question.strip():
+                follow_up_questions.append({
+                    "id": f"follow_up_{i+1}",
+                    "text": question.strip(),
+                    "type": "text",
+                    "placeholder": "具体的に教えてください"
+                })
+
+        print("\nGenerated questions:", follow_up_questions)
+        return Response({"questions": follow_up_questions})
+
+    except Exception as e:
+        print("\nError in generate_questions:")
+        print("Error type:", type(e))
+        print("Error message:", str(e))
+        print("Full error details:", e.__dict__)
+        return Response(
+            {"error": f"質問の生成に失敗しました: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def save_project_answers(request):
+    """回答を保存するAPI"""
+    try:
+        project_id = request.data.get('project_id')
+        answers = request.data.get('answers', {})
+        
+        print("\nSaving answers:", answers)  # デバッグ用
+        print("Project ID:", project_id)     # デバッグ用
+        
+        project = ProjectPlan.objects.get(id=project_id, user=request.user)
+        
+        # 回答を保存
+        for question_id, answer in answers.items():
+            try:
+                # 質問が存在するか確認
+                if question_id.startswith('follow_up_'):
+                    # AI生成の質問の場合
+                    question, created = ProjectQuestion.objects.get_or_create(
+                        text=answer.get('question', ''),
+                        defaults={
+                            'type': 'text',
+                            'order': 1000 + int(question_id.split('_')[-1])
+                        }
+                    )
+                else:
+                    # 基本質問の場合
+                    question = ProjectQuestion.objects.get(id=question_id)
+                
+                ProjectAnswer.objects.update_or_create(
+                    project=project,
+                    question=question,
+                    defaults={'answer': answer if isinstance(answer, str) else answer.get('answer', '')}
+                )
+            except Exception as e:
+                print(f"Error saving answer for question {question_id}:", str(e))
+                
+        return Response({'message': '回答を保存しました'})
+        
+    except ProjectPlan.DoesNotExist:
+        return Response(
+            {'error': 'プロジェクトが見つかりません'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        print("\nError in save_project_answers:")
+        print("Error type:", type(e))
+        print("Error message:", str(e))
+        return Response(
+            {'error': f'保存に失敗しました: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_project(request):
+    """新しい事業計画書プロジェクトを作成"""
+    try:
+        project = ProjectPlan.objects.create(
+            user=request.user,
+            title=request.data.get('title', '新しい事業計画書'),
+            status='in_progress'
+        )
+        
+        return Response({
+            'project_id': project.id,
+            'message': 'プロジェクトを作成しました'
+        })
+        
+    except Exception as e:
+        # エラーの詳細をログに出力
+        print("\nError in create_project:")
+        print("Error type:", type(e))
+        print("Error message:", str(e))
+        return Response(
+            {'error': f'プロジェクトの作成に失敗しました: {str(e)}'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

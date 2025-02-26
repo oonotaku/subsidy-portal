@@ -6,6 +6,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import ProjectPlanPage from './pages/ProjectPlanPage';
+import AnswerConfirmationPage from './pages/AnswerConfirmationPage';
+import AIQuestionsPage from './pages/AIQuestionsPage';
 import PrivateRoute from './components/PrivateRoute';
 
 function App() {
@@ -14,8 +16,11 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/" element={<PrivateRoute><HomePage /></PrivateRoute>} />
+          <Route path="/" element={<Navigate to="/applications" replace />} />
+          <Route path="/applications" element={<PrivateRoute><HomePage /></PrivateRoute>} />
           <Route path="/project-plan" element={<PrivateRoute><ProjectPlanPage /></PrivateRoute>} />
+          <Route path="/confirm-answers" element={<PrivateRoute><AnswerConfirmationPage /></PrivateRoute>} />
+          <Route path="/ai-questions" element={<PrivateRoute><AIQuestionsPage /></PrivateRoute>} />
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
         <ToastContainer />

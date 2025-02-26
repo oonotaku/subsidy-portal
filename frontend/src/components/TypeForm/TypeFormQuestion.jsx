@@ -47,7 +47,7 @@ const TypeFormQuestion = ({
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleNext();
+      handleSubmit(e);
     }
   };
 
@@ -60,6 +60,14 @@ const TypeFormQuestion = ({
     });
     if (answer.trim()) {
       onNext(answer);
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (answer.trim()) {
+      onNext(answer);
+      setAnswer('');
     }
   };
 
@@ -83,8 +91,8 @@ const TypeFormQuestion = ({
         {question.text}
       </h2>
 
-      {/* 回答入力エリア */}
-      <div className="space-y-4">
+      {/* 回答フォーム */}
+      <form onSubmit={handleSubmit} className="space-y-4">
         <textarea
           ref={inputRef}
           value={answer}
@@ -94,7 +102,16 @@ const TypeFormQuestion = ({
           className="w-full p-4 text-lg border-b-2 border-gray-300 focus:border-blue-600 outline-none resize-none bg-transparent"
           rows={3}
         />
-      </div>
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={!answer.trim()}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            次へ →
+          </button>
+        </div>
+      </form>
 
       {/* ナビゲーションボタン */}
       <div className="flex justify-between items-center pt-4">
@@ -109,13 +126,6 @@ const TypeFormQuestion = ({
         <div className="text-sm text-gray-500">
           Enterキーで次へ進めます
         </div>
-        <button
-          onClick={handleNext}
-          disabled={!answer.trim()}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-        >
-          次へ →
-        </button>
       </div>
     </div>
   );

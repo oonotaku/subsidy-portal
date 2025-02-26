@@ -132,23 +132,23 @@ class SubsidyApplication(models.Model):
     updated_at = models.DateTimeField(auto_now=True) 
 
 class ProjectPlan(models.Model):
-    """事業計画モデル"""
-    application = models.ForeignKey(SubsidyApplication, on_delete=models.CASCADE, related_name='project_plans')
-    name = models.CharField(max_length=200, verbose_name='事業計画名')
-    summary = models.TextField(verbose_name='事業概要', blank=True)
-    implementation_period = models.CharField(max_length=100, verbose_name='実施期間', blank=True)
-    investment_amount = models.IntegerField(verbose_name='投資予定額')
-    innovation_point = models.TextField(verbose_name='革新性ポイント', blank=True)
-    market_research = models.TextField(verbose_name='市場調査', blank=True)
-    implementation_system = models.TextField(verbose_name='実施体制', blank=True)
-    expected_outcome = models.TextField(verbose_name='期待される成果', blank=True)
-    business_plan_file = models.FileField(upload_to='project_plans/', null=True, blank=True)
+    """事業計画書のモデル"""
+    STATUS_CHOICES = [
+        ('draft', '下書き'),
+        ('in_progress', '作成中'),
+        ('completed', '完了'),
+        ('reviewing', 'AI分析中')
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    title = models.CharField(max_length=200, default='新規事業計画書')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    is_premium = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        verbose_name = '事業計画'
-        verbose_name_plural = '事業計画一覧'
+    def __str__(self):
+        return f"{self.user.email if self.user else '未設定'}の事業計画書: {self.title}"
 
 class ApplicationProgress(models.Model):
     """申請進捗管理"""
@@ -182,35 +182,36 @@ class ApplicationProgress(models.Model):
         return f"{self.application.project_name or '(未設定)'} - {self.get_status_display()}" 
 
 class ProjectQuestion(models.Model):
-    """事業計画の質問テンプレート"""
-    QUESTION_TYPES = [
-        ('text', 'テキスト入力'),
-        ('number', '数値入力'),
-        ('choice', '選択式'),
-        ('multi', '複数選択'),
-    ]
-    
-    question_id = models.CharField(max_length=50, unique=True)
-    text = models.TextField()
-    question_type = models.CharField(max_length=10, choices=QUESTION_TYPES)
-    options = models.JSONField(null=True, blank=True)  # 選択式の場合の選択肢
-    required = models.BooleanField(default=True)
-    order = models.IntegerField()
-    dependent_on = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
-    condition = models.JSONField(null=True, blank=True)  # 表示条件
-    ai_prompt = models.TextField(null=True, blank=True)  # AI用の追加コンテキスト
-    
+    """事業計画の質問モデル"""
+    text = models.CharField(max_length=500, verbose_name='質問文')
+    placeholder = models.CharField(max_length=200, blank=True, verbose_name='プレースホルダー')
+    order = models.IntegerField(default=0, verbose_name='表示順')
+    type = models.CharField(max_length=50, default='text', verbose_name='入力タイプ')
+    is_required = models.BooleanField(default=True, verbose_name='必須')
+
     class Meta:
         ordering = ['order']
+        verbose_name = '事業計画質問'
+        verbose_name_plural = '事業計画質問一覧'
+
+    def __str__(self):
+        return self.text
 
 class ProjectAnswer(models.Model):
-    """ユーザーの回答を保存"""
-    project = models.ForeignKey('ProjectPlan', on_delete=models.CASCADE)
+    """事業計画の回答モデル"""
+    project = models.ForeignKey(ProjectPlan, on_delete=models.CASCADE, related_name='answers')
     question = models.ForeignKey(ProjectQuestion, on_delete=models.CASCADE)
-    answer = models.JSONField()
-    ai_feedback = models.TextField(null=True, blank=True)
+    answer = models.TextField(verbose_name='回答')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '事業計画回答'
+        verbose_name_plural = '事業計画回答一覧'
+        unique_together = ['project', 'question']  # 1つの質問に対して1つの回答
+
+    def __str__(self):
+        return f"{self.project.title} - {self.question.text[:20]}"
 
 class AIPrompt(models.Model):
     """AI用のプロンプトテンプレート"""

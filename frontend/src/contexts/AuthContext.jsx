@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { loginUser } from '../services/auth';
 
 const AuthContext = createContext(null);
 
@@ -11,25 +12,35 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
-  // 初期化時にlocalStorageから認証状態を復元
+  // ユーザー情報を永続化
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    console.log('AuthProvider: Initializing', { hasToken: !!token });
-    if (token) {
-      setUser({ token });
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
     }
   }, []);
 
   const value = {
     user,
-    login: (token) => {
-      console.log('AuthContext: Login');
-      localStorage.setItem('token', token);
-      setUser({ token });
+    login: async (email, password) => {
+      try {
+        const response = await loginUser(email, password);
+        // レスポンスの構造を確認
+        console.log('Login response:', response);
+        // トークンを直接取得
+        const token = response.data.token;
+        const userData = { token };
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        return userData;
+      } catch (error) {
+        console.error('Login error in context:', error);
+        throw error;
+      }
     },
     logout: () => {
       console.log('AuthContext: Logout');
-      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       setUser(null);
       navigate('/login');
     }
@@ -39,7 +50,8 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     console.log('AuthContext: State changed', { 
       isAuthenticated: !!user,
-      hasToken: !!user?.token 
+      hasToken: !!user?.token,
+      user  // 実際のユーザーオブジェクトも確認
     });
   }, [user]);
 

@@ -26,4 +26,7 @@ urlpatterns = [
     path('projects/<int:project_id>/questions/', 
          views.get_project_questions, 
          name='get_project_questions'),
+    path('generate-questions/', views.generate_questions, name='generate-questions'),
+    path('projects/answers/', views.save_project_answers, name='save_project_answers'),
+    path('projects/create/', views.create_project, name='create_project'),
 ] 

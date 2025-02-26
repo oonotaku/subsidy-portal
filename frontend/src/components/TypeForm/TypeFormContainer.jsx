@@ -1,28 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { generateFollowUpQuestions } from '../../services/openaiService';
 import TypeFormQuestion from './TypeFormQuestion';
 import TypeFormComplete from './TypeFormComplete';
 import { toast } from 'react-toastify';
 
+// 基本質問のマッピング
+const QUESTION_ID_MAP = {
+  'business_overview': 4,
+  'current_issues': 5,
+  'target_market': 6,
+  'unique_point': 7,
+  'implementation_plan': 8,
+  'expected_outcome': 9
+};
+
 const TypeFormContainer = ({ questions: initialQuestions, onComplete }) => {
   const { user } = useAuth();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [questions, setQuestions] = useState(initialQuestions);
-  const [answers, setAnswers] = useState(
-    initialQuestions.reduce((acc, q) => ({ ...acc, [q.id]: '' }), {})
-  );
+  const [answers, setAnswers] = useState({});
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
 
-  console.log('Current state:', { currentQuestionIndex, answers, isCompleted }); // デバッグ用
-
   const handleNext = async (answer) => {
-    console.log('Handling next:', { currentQuestionIndex, answer }); // デバッグ用
     const currentQuestion = questions[currentQuestionIndex];
+    const questionId = QUESTION_ID_MAP[currentQuestion.id] || currentQuestion.id;
+    
     const updatedAnswers = {
       ...answers,
-      [currentQuestion.id]: answer
+      [questionId]: answer
     };
     setAnswers(updatedAnswers);
 
@@ -43,32 +50,24 @@ const TypeFormContainer = ({ questions: initialQuestions, onComplete }) => {
       }
     }
 
-    // 全ての質問が終わったら完了
-    if (currentQuestionIndex === questions.length - 1) {
-      console.log('Completing form:', updatedAnswers); // デバッグ用
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+    } else {
       setIsCompleted(true);
       onComplete(updatedAnswers);
-      return;
     }
-
-    // 次の質問へ
-    setCurrentQuestionIndex(prev => prev + 1);
   };
 
   const handlePrevious = () => {
-    console.log('Going back from:', currentQuestionIndex); // デバッグ用
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
     }
   };
 
-  // 完了画面の表示
   if (isCompleted) {
-    console.log('Showing completion screen with:', answers); // デバッグ用
     return <TypeFormComplete answers={answers} />;
   }
 
-  // メイン画面の表示
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-2xl p-8">
@@ -78,9 +77,8 @@ const TypeFormContainer = ({ questions: initialQuestions, onComplete }) => {
           </div>
         ) : (
           <TypeFormQuestion
-            key={currentQuestionIndex} // 質問が変わるたびにコンポーネントを再マウント
             question={questions[currentQuestionIndex]}
-            answer={answers[questions[currentQuestionIndex].id]}
+            answer={answers[QUESTION_ID_MAP[questions[currentQuestionIndex].id] || questions[currentQuestionIndex].id]}
             onNext={handleNext}
             onPrevious={currentQuestionIndex > 0 ? handlePrevious : null}
             progress={(currentQuestionIndex / questions.length) * 100}

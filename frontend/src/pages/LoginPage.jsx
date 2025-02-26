@@ -15,22 +15,10 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/auth/login/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        throw new Error('ログインに失敗しました');
-      }
-
-      const data = await response.json();
-      login(data.token);
+      await login(email, password);
       toast.success('ログインしました');
-      navigate('/', { replace: true });
+      console.log('Navigating to /applications...');
+      navigate('/applications', { replace: true });
     } catch (error) {
       console.error('Login error:', error);
       toast.error('ログインに失敗しました');
