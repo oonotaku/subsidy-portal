@@ -132,23 +132,32 @@ class SubsidyApplication(models.Model):
     updated_at = models.DateTimeField(auto_now=True) 
 
 class ProjectPlan(models.Model):
-    """事業計画モデル"""
-    application = models.ForeignKey(SubsidyApplication, on_delete=models.CASCADE, related_name='project_plans')
-    name = models.CharField(max_length=200, verbose_name='事業計画名')
-    summary = models.TextField(verbose_name='事業概要', blank=True)
-    implementation_period = models.CharField(max_length=100, verbose_name='実施期間', blank=True)
-    investment_amount = models.IntegerField(verbose_name='投資予定額')
-    innovation_point = models.TextField(verbose_name='革新性ポイント', blank=True)
-    market_research = models.TextField(verbose_name='市場調査', blank=True)
-    implementation_system = models.TextField(verbose_name='実施体制', blank=True)
-    expected_outcome = models.TextField(verbose_name='期待される成果', blank=True)
-    business_plan_file = models.FileField(upload_to='project_plans/', null=True, blank=True)
+    """事業計画書の基本情報"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('draft', '作成中'),
+            ('phase1_complete', '基本質問完了'),
+            ('phase2_in_progress', 'AI質問対応中'),
+            ('completed', '完了')
+        ],
+        default='draft'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_answered_question = models.IntegerField(default=0)  # 最後に回答した質問番号
+
+class ProjectAnswer(models.Model):
+    """質問への回答を保存"""
+    project = models.ForeignKey(ProjectPlan, on_delete=models.CASCADE)
+    question_number = models.IntegerField()  # 質問番号（1-6）
+    answer = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = '事業計画'
-        verbose_name_plural = '事業計画一覧'
+        unique_together = ['project', 'question_number']
 
 class ApplicationProgress(models.Model):
     """申請進捗管理"""
@@ -202,15 +211,6 @@ class ProjectQuestion(models.Model):
     
     class Meta:
         ordering = ['order']
-
-class ProjectAnswer(models.Model):
-    """ユーザーの回答を保存"""
-    project = models.ForeignKey('ProjectPlan', on_delete=models.CASCADE)
-    question = models.ForeignKey(ProjectQuestion, on_delete=models.CASCADE)
-    answer = models.JSONField()
-    ai_feedback = models.TextField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
 class AIPrompt(models.Model):
     """AI用のプロンプトテンプレート"""

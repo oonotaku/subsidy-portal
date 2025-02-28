@@ -244,3 +244,14 @@ CSRF_COOKIE_SECURE = not DEBUG
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
+
+# 既存の設定に追加
+if DEBUG:
+    # 開発環境では認証を簡略化
+    ACCOUNT_EMAIL_VERIFICATION = 'none'
+    REST_FRAMEWORK = {
+        'DEFAULT_AUTHENTICATION_CLASSES': [
+            'rest_framework.authentication.TokenAuthentication',
+            'rest_framework.authentication.SessionAuthentication',  # 開発用に追加
+        ],
+    }

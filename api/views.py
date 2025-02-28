@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 import requests
-from .models import Todo, Subsidy, CompanyProfile, SubsidyEligibilityCheck, SubsidyApplication, ApplicationProgress, ProjectPlan, ProjectQuestion
+from .models import Todo, Subsidy, CompanyProfile, SubsidyEligibilityCheck, SubsidyApplication, ApplicationProgress, ProjectPlan, ProjectQuestion, ProjectAnswer
 from .serializers import (
     TodoSerializer, 
     SubsidySerializer, 
@@ -721,3 +721,84 @@ def get_project_questions(request, project_id):
             {'error': '質問の取得に失敗しました。'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def start_project_plan(request):
+    """新規事業計画書の作成開始"""
+    try:
+        project = ProjectPlan.objects.create(
+            user=request.user,
+            status='draft',
+            last_answered_question=0
+        )
+        
+        return Response({
+            'id': project.id,
+            'status': project.get_status_display(),
+            'message': '事業計画書の作成を開始しました'
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        return Response(
+            {'error': '事業計画書の作成に失敗しました'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_project_plans(request):
+    """ユーザーの事業計画書一覧を取得"""
+    projects = ProjectPlan.objects.filter(user=request.user).order_by('-updated_at')
+    data = [{
+        'id': project.id,
+        'status': project.get_status_display(),
+        'last_answered_question': project.last_answered_question,
+        'created_at': project.created_at,
+        'updated_at': project.updated_at,
+        # 最新の回答を取得
+        'latest_answer': ProjectAnswer.objects.filter(
+            project=project
+        ).order_by('-updated_at').first().answer if ProjectAnswer.objects.filter(
+            project=project
+        ).exists() else None
+    } for project in projects]
+    
+    return Response(data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_project_detail(request, project_id):
+    """事業計画書の詳細を取得"""
+    try:
+        project = ProjectPlan.objects.get(id=project_id, user=request.user)
+        answers = ProjectAnswer.objects.filter(project=project).order_by('question_number')
+        
+        data = {
+            'id': project.id,
+            'status': project.get_status_display(),
+            'last_answered_question': project.last_answered_question,
+            'created_at': project.created_at,
+            'updated_at': project.updated_at,
+            'answers': [{
+                'question_number': answer.question_number,
+                'answer': answer.answer,
+                'updated_at': answer.updated_at
+            } for answer in answers]
+        }
+        
+        return Response(data)
+        
+    except ProjectPlan.DoesNotExist:
+        return Response(
+            {'error': '指定された事業計画が見つかりません。'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+@api_view(['GET', 'POST'])
+def manage_project_answers(request, project_id):
+    """回答の保存と取得"""
+
+@api_view(['GET'])
+def get_project_status(request, project_id):
+    """進捗状況の取得"""

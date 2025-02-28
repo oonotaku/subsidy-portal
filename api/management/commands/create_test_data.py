@@ -8,8 +8,8 @@ class Command(BaseCommand):
     help = 'テストデータを作成します'
 
     def handle(self, *args, **options):
-        # ユーザーを取得
-        user = User.objects.get(email='taku@node-bee.com')
+        # ユーザーを取得（メールアドレスを修正）
+        user = User.objects.get(email='test@example.com')
 
         # 企業プロフィールを作成
         company_profile, _ = CompanyProfile.objects.get_or_create(

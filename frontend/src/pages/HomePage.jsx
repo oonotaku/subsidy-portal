@@ -32,7 +32,7 @@ const HomePage = () => {
               ログインに成功しました。これから事業計画書の作成を始めましょう。
             </p>
             <Link
-              to="/project-plan"
+              to="/project-plans"
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
             >
               事業計画書を作成する →
