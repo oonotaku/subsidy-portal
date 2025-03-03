@@ -52,20 +52,45 @@ const ProjectPlanListPage = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      'draft': { color: 'gray', text: '作成中' },
-      'phase1_complete': { color: 'green', text: '基本質問完了' },
-      'phase2_in_progress': { color: 'blue', text: 'AI質問対応中' },
-      'completed': { color: 'indigo', text: '完了' }
-    };
+  const handleDelete = async (id, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!window.confirm('この事業計画書を削除しますか？')) return;
+    
+    try {
+      const response = await fetch(`http://localhost:8000/api/project-plans/${id}/hide/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${user.token}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('Failed to delete project');
+      
+      toast.success('事業計画書を削除しました');
+      fetchProjects();
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      toast.error('事業計画書の削除に失敗しました');
+    }
+  };
 
-    const config = statusConfig[status] || statusConfig.draft;
-    return (
-      <span className={`px-3 py-1 text-sm rounded-full bg-${config.color}-100 text-${config.color}-800`}>
-        {config.text}
-      </span>
-    );
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case '作成中':
+        return <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">作成中</span>;
+      case '基本質問完了':
+        return <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">基本質問完了</span>;
+      case 'AI質問対応中':
+        return <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800">AI質問対応中</span>;
+      case 'AI質問完了':
+        return <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">AI質問完了</span>;
+      case '事業計画書完成':
+        return <span className="px-2 py-1 text-xs rounded-full bg-green-500 text-white">完成</span>;
+      default:
+        return <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">{status}</span>;
+    }
   };
 
   const getProgressIndicator = (project) => {
@@ -121,7 +146,7 @@ const ProjectPlanListPage = () => {
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h2 className="text-xl font-semibold mb-1">
-                  事業計画書 #{project.id}
+                  {project.title}
                 </h2>
                 <p className="text-sm text-gray-500">
                   作成開始: {format(new Date(project.created_at), 'yyyy年MM月dd日', { locale: ja })}
@@ -146,16 +171,61 @@ const ProjectPlanListPage = () => {
               </div>
             )}
 
-            <div className="mt-4 flex justify-end">
-              <Link
-                to={`/project-plan/${project.id}`}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            <div className="mt-4 flex justify-between">
+              {project.status === '作成中' && (
+                <Link
+                  to={`/project-plan/${project.id}`}
+                  className="text-blue-600 hover:text-blue-800 flex items-center"
+                >
+                  続きを編集
+                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              )}
+              
+              {project.status === '基本質問完了' && (
+                <Link
+                  to={`/project-plan/${project.id}/ai-questions`}
+                  className="text-purple-600 hover:text-purple-800 flex items-center"
+                >
+                  AIの詳細質問に進む
+                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              )}
+              
+              {project.status === 'AI質問対応中' && (
+                <Link
+                  to={`/project-plan/${project.id}/ai-questions`}
+                  className="text-purple-600 hover:text-purple-800 flex items-center"
+                >
+                  AI質問を続ける
+                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              )}
+              
+              {project.status === 'AI質問完了' && (
+                <Link
+                  to={`/project-plan/${project.id}/generate-document`}
+                  className="text-green-600 hover:text-green-800 flex items-center"
+                >
+                  事業計画書を作成する
+                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              )}
+              
+              <button
+                onClick={(e) => handleDelete(project.id, e)}
+                className="text-red-600 hover:text-red-800"
               >
-                続きを編集
-                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
+                削除
+              </button>
             </div>
           </div>
         ))}

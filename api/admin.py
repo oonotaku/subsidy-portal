@@ -2,7 +2,8 @@ from django.contrib import admin
 from .models import (
     Todo, Subsidy, CompanyProfile, 
     SubsidyEligibilityCheck, BusinessPlan,
-    SubsidyApplication
+    SubsidyApplication, ApplicationProgress,
+    ProjectPlan, ProjectAnswer, ProjectQuestion
 )
 
 @admin.register(Todo)
@@ -42,4 +43,28 @@ class BusinessPlanAdmin(admin.ModelAdmin):
 class SubsidyApplicationAdmin(admin.ModelAdmin):
     list_display = ['project_name', 'status', 'created_at']
     list_filter = ['status', 'created_at']
-    search_fields = ['project_name'] 
+    search_fields = ['project_name']
+
+@admin.register(ProjectPlan)
+class ProjectPlanAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'status', 'created_at', 'updated_at']
+    list_filter = ['status', 'created_at']
+    search_fields = ['id', 'user__username']
+
+@admin.register(ProjectAnswer)
+class ProjectAnswerAdmin(admin.ModelAdmin):
+    list_display = ['id', 'project', 'question_number', 'answer', 'created_at']
+    list_filter = ['project', 'question_number']
+    search_fields = ['answer']
+
+@admin.register(ProjectQuestion)
+class ProjectQuestionAdmin(admin.ModelAdmin):
+    list_display = ['question_id', 'text', 'order']
+    list_filter = ['question_type']
+    search_fields = ['text', 'question_id']
+
+@admin.register(ApplicationProgress)
+class ApplicationProgressAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'application', 'status', 'last_edited_at']
+    list_filter = ['status']
+    search_fields = ['application__project_name'] 

@@ -727,11 +727,13 @@ def get_project_questions(request, project_id):
 def start_project_plan(request):
     """新規事業計画書の作成開始"""
     try:
+        print("Creating new project plan...")
         project = ProjectPlan.objects.create(
             user=request.user,
             status='draft',
             last_answered_question=0
         )
+        print(f"Project created with ID: {project.id}")
         
         return Response({
             'id': project.id,
@@ -740,8 +742,9 @@ def start_project_plan(request):
         }, status=status.HTTP_201_CREATED)
         
     except Exception as e:
+        print(f"Error in start_project_plan: {str(e)}")
         return Response(
-            {'error': '事業計画書の作成に失敗しました'}, 
+            {'error': f'事業計画書の作成に失敗しました: {str(e)}'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
@@ -749,22 +752,30 @@ def start_project_plan(request):
 @permission_classes([IsAuthenticated])
 def list_project_plans(request):
     """ユーザーの事業計画書一覧を取得"""
-    projects = ProjectPlan.objects.filter(user=request.user).order_by('-updated_at')
-    data = [{
+    projects = ProjectPlan.objects.filter(user=request.user, is_deleted=False).order_by('-updated_at')
+    
+    # 最新の回答を取得
+    result = [{
         'id': project.id,
-        'status': project.get_status_display(),
-        'last_answered_question': project.last_answered_question,
+        'title': project.title or f'事業計画書 #{project.id}',
+        'status': dict(project._meta.get_field('status').choices).get(project.status, '作成中'),
         'created_at': project.created_at,
         'updated_at': project.updated_at,
-        # 最新の回答を取得
-        'latest_answer': ProjectAnswer.objects.filter(
-            project=project
-        ).order_by('-updated_at').first().answer if ProjectAnswer.objects.filter(
-            project=project
-        ).exists() else None
+        'last_answered_question': project.last_answered_question,
+        # phase1_lockedフィールドは一時的に除外
+        # 'phase1_locked': False,  # デフォルト値を設定
     } for project in projects]
     
-    return Response(data)
+    # 最新の回答を追加
+    for item in result:
+        latest_answer = ProjectAnswer.objects.filter(
+            project_id=item['id']
+        ).order_by('-updated_at').first()
+        
+        if latest_answer:
+            item['latest_answer'] = latest_answer.answer
+    
+    return Response(result)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -776,6 +787,7 @@ def get_project_detail(request, project_id):
         
         data = {
             'id': project.id,
+            'title': project.title or f'事業計画書 #{project.id}',  # タイトルがなければデフォルト名
             'status': project.get_status_display(),
             'last_answered_question': project.last_answered_question,
             'created_at': project.created_at,
@@ -796,9 +808,294 @@ def get_project_detail(request, project_id):
         )
 
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def manage_project_answers(request, project_id):
     """回答の保存と取得"""
+    try:
+        project = ProjectPlan.objects.get(id=project_id, user=request.user)
+        
+        if request.method == 'POST':
+            question_number = request.data.get('question_number')
+            answer = request.data.get('answer')
+            
+            if not question_number or not answer:
+                return Response(
+                    {'error': '質問番号と回答は必須です'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # 回答を保存または更新
+            obj, created = ProjectAnswer.objects.update_or_create(
+                project=project,
+                question_number=question_number,
+                defaults={'answer': answer}
+            )
+            
+            # 最後に回答した質問番号を更新
+            if int(question_number) > project.last_answered_question:
+                project.last_answered_question = int(question_number)
+                project.save()
+            
+            return Response({
+                'id': obj.id,
+                'question_number': obj.question_number,
+                'answer': obj.answer,
+                'created_at': obj.created_at,
+                'updated_at': obj.updated_at
+            })
+        
+        else:  # GET
+            answers = ProjectAnswer.objects.filter(project=project).order_by('question_number')
+            data = [{
+                'question_number': answer.question_number,
+                'answer': answer.answer,
+                'updated_at': answer.updated_at
+            } for answer in answers]
+            
+            return Response(data)
+            
+    except ProjectPlan.DoesNotExist:
+        return Response(
+            {'error': '指定された事業計画が見つかりません'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'エラーが発生しました: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 @api_view(['GET'])
 def get_project_status(request, project_id):
     """進捗状況の取得"""
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def complete_project_phase1(request, project_id):
+    """事業計画書のフェーズ1を完了する"""
+    try:
+        project = ProjectPlan.objects.get(id=project_id, user=request.user)
+        
+        # 全ての質問に回答しているか確認
+        answer_count = ProjectAnswer.objects.filter(project=project).count()
+        if answer_count < 6:  # 6つの質問全てに回答していることを確認
+            return Response(
+                {'error': '全ての質問に回答してください'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # ステータスを更新
+        project.status = 'phase1_complete'
+        project.save()
+        
+        return Response({
+            'message': 'フェーズ1が完了しました',
+            'status': project.get_status_display()
+        })
+        
+    except ProjectPlan.DoesNotExist:
+        return Response(
+            {'error': '指定された事業計画が見つかりません'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'エラーが発生しました: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def hide_project_plan(request, project_id):
+    """事業計画書を非表示にする（論理削除）"""
+    try:
+        project = ProjectPlan.objects.get(id=project_id, user=request.user)
+        
+        # 論理削除フラグを設定
+        project.is_deleted = True
+        project.save()
+        
+        return Response({
+            'message': '事業計画書を削除しました',
+            'id': project.id
+        })
+        
+    except ProjectPlan.DoesNotExist:
+        return Response(
+            {'error': '指定された事業計画が見つかりません'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'エラーが発生しました: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_project_title(request, project_id):
+    """事業計画書のタイトルを自動生成する"""
+    try:
+        project = ProjectPlan.objects.get(id=project_id, user=request.user)
+        
+        # 回答を取得
+        answers = ProjectAnswer.objects.filter(project=project).order_by('question_number')
+        if not answers.exists() or answers.count() < 1:
+            return Response(
+                {'error': '回答が不足しています。少なくとも1つの質問に回答してください。'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 最初の質問（事業内容）の回答を基にタイトルを生成
+        first_answer = answers.filter(question_number=1).first()
+        if first_answer:
+            # 回答の最初の30文字をタイトルとして使用
+            title_text = first_answer.answer[:30]
+            if len(first_answer.answer) > 30:
+                title_text += "..."
+                
+            project.title = title_text
+            project.save()
+            
+            return Response({
+                'title': project.title,
+                'message': 'タイトルを生成しました'
+            })
+        
+        return Response(
+            {'error': '事業内容の回答が見つかりません'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+        
+    except ProjectPlan.DoesNotExist:
+        return Response(
+            {'error': '指定された事業計画が見つかりません'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'エラーが発生しました: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_project_title(request, project_id):
+    """事業計画書のタイトルを更新する"""
+    try:
+        project = ProjectPlan.objects.get(id=project_id, user=request.user)
+        
+        title = request.data.get('title')
+        if not title:
+            return Response(
+                {'error': 'タイトルは必須です'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        project.title = title
+        project.save()
+        
+        return Response({
+            'title': project.title,
+            'message': 'タイトルを更新しました'
+        })
+        
+    except ProjectPlan.DoesNotExist:
+        return Response(
+            {'error': '指定された事業計画が見つかりません'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'エラーが発生しました: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def lock_phase1(request, project_id):
+    """ファーストステップを確定（ロック）する"""
+    try:
+        project = ProjectPlan.objects.get(id=project_id, user=request.user)
+        
+        # 全ての基本質問に回答済みか確認
+        answers = ProjectAnswer.objects.filter(project=project)
+        if answers.count() < 6:  # 基本質問は6つ
+            return Response(
+                {'error': '全ての基本質問に回答してください'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # ファーストステップをロック
+        project.phase1_locked = True
+        project.status = 'phase1_complete'
+        project.save()
+        
+        return Response({
+            'message': '基本質問を確定しました',
+            'status': project.status
+        })
+        
+    except ProjectPlan.DoesNotExist:
+        return Response(
+            {'error': '指定された事業計画が見つかりません'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'エラーが発生しました: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_ai_questions(request, project_id):
+    """AIによる詳細質問を生成する"""
+    try:
+        project = ProjectPlan.objects.get(id=project_id, user=request.user)
+        
+        # ファーストステップが確定済みか確認
+        if not project.phase1_locked:
+            return Response(
+                {'error': '基本質問を先に確定してください'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 基本質問の回答を取得
+        answers = ProjectAnswer.objects.filter(project=project).order_by('question_number')
+        if answers.count() < 6:
+            return Response(
+                {'error': '基本質問の回答が不足しています'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 回答内容をまとめる
+        context = "\n".join([f"質問{a.question_number}: {a.answer}" for a in answers])
+        
+        # OpenAI APIを使用して詳細質問を生成
+        # ここではダミーの質問を返していますが、実際にはOpenAI APIを呼び出します
+        ai_questions = [
+            {"id": "ai_q1", "text": "市場規模はどのくらいですか？", "type": "text"},
+            {"id": "ai_q2", "text": "主な競合他社は誰ですか？", "type": "text"},
+            {"id": "ai_q3", "text": "収益モデルについて詳しく説明してください", "type": "text"}
+        ]
+        
+        # プロジェクトのステータスを更新
+        project.status = 'phase2_in_progress'
+        project.save()
+        
+        return Response({
+            'questions': ai_questions,
+            'message': 'AI質問を生成しました'
+        })
+        
+    except ProjectPlan.DoesNotExist:
+        return Response(
+            {'error': '指定された事業計画が見つかりません'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'エラーが発生しました: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

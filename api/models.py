@@ -133,31 +133,32 @@ class SubsidyApplication(models.Model):
 
 class ProjectPlan(models.Model):
     """事業計画書の基本情報"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    title = models.CharField(max_length=200, blank=True, null=True)
     status = models.CharField(
         max_length=20,
         choices=[
             ('draft', '作成中'),
-            ('phase1_complete', '基本質問完了'),
-            ('phase2_in_progress', 'AI質問対応中'),
-            ('completed', '完了')
+            ('phase1_complete', '基本質問完了'),  # ファーストステップ完了
+            ('phase2_in_progress', 'AI質問対応中'),  # セカンドステップ進行中
+            ('phase2_complete', 'AI質問完了'),  # セカンドステップ完了
+            ('completed', '事業計画書完成')  # 最終完成
         ],
         default='draft'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    last_answered_question = models.IntegerField(default=0)  # 最後に回答した質問番号
+    last_answered_question = models.IntegerField(default=0)
+    is_deleted = models.BooleanField(default=False)
+    phase1_locked = models.BooleanField(default=False)  # ファーストステップをロックするフラグ
 
 class ProjectAnswer(models.Model):
     """質問への回答を保存"""
     project = models.ForeignKey(ProjectPlan, on_delete=models.CASCADE)
-    question_number = models.IntegerField()  # 質問番号（1-6）
+    question_number = models.IntegerField(null=True)  # null=Trueを追加
     answer = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = ['project', 'question_number']
 
 class ApplicationProgress(models.Model):
     """申請進捗管理"""
